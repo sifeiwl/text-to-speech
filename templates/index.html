@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文字转语音 1.0</title>
+    <link rel="stylesheet" href="../static/styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>文字转语音 1.0</h1>
+        <form id="tts-form">
+             <!-- 输入框和字数统计 -->
+            <div style="position: relative;">
+                <textarea name="text" rows="10" cols="50" placeholder="请输入文本..." id="text-input"></textarea>
+                <span id="char-count" style="position: absolute; bottom: 10px; right: 20px; color: #666; font-size: 12px;">0</span>
+            </div>
+            <br><br>
+            <label for="voice">选择角色：</label>
+            <select name="voice" id="voice">
+                {% for voice in voices %}
+                    <option value="{{ voice }}">{{ voice }}</option>
+                {% endfor %}
+            </select><br><br>
+            <label for="rate">语速 (<span id="rate-value">50</span>%):</label>
+            <input type="range" id="rate" name="rate" min="0" max="100" value="50"><br><br>
+            <label for="pitch">音高 (<span id="pitch-value">50</span>%):</label>
+            <input type="range" id="pitch" name="pitch" min="0" max="100" value="50"><br><br>
+            <label for="volume">音量 (<span id="volume-value">50</span>%):</label>
+            <input type="range" id="volume" name="volume" min="0" max="100" value="50"><br><br>
+            <button type="submit">生成语音</button>
+        </form>
+
+        <!-- 加载动画 -->
+        <div id="loading" style="display: none; margin-top: 20px;">
+            <p>生成中，请稍候...</p>
+            <div class="loader"></div>
+        </div>
+
+        <!-- 音频区域 -->
+        <div id="audio-container" style="margin-top: 20px; display: none;">
+            <h2>生成的语音文件：</h2>
+            <audio id="audio-player" controls style="display: none;">
+                <source src="" type="audio/mpeg">
+                您的浏览器不支持音频播放。
+            </audio>
+            <!-- 下载按钮 -->
+            <button id="download-btn" style="margin-top: 10px; display: none;">下载</button>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // 更新滑动条值显示
+            $('#rate').on('input', function() {
+                $('#rate-value').text($(this).val());
+            });
+
+            $('#pitch').on('input', function() {
+                $('#pitch-value').text($(this).val());
+            });
+
+            $('#volume').on('input', function() {
+                $('#volume-value').text($(this).val());
+            });
+
+            // 监听输入框变化，更新字数统计
+            $('#text-input').on('input', function() {
+                const text = $(this).val();
+                const charCount = text.length;
+                $('#char-count').text(charCount);
+            });
+
+            // 表单提交逻辑
+            $('#tts-form').on('submit', function(e) {
+                e.preventDefault(); // 阻止表单默认提交行为
+
+                // 显示加载动画
+                $('#loading').show();
+
+                // 获取表单数据
+                const formData = {
+                    text: $('textarea[name="text"]').val(),
+                    voice: $('#voice').val(),
+                    rate: $('#rate').val(),
+                    pitch: $('#pitch').val(),
+                    volume: $('#volume').val()
+                };
+
+                // 隐藏下载按钮
+                $('#download-btn').hide()
+
+                // 隐藏音频区域
+                $('#audio-container').hide();
+
+                // 发送 AJAX 请求
+                $.ajax({
+                    url: '/generate',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        // 隐藏加载动画
+                        $('#loading').hide();
+
+                        // 显示音频播放器并设置音频源
+                        const audioPlayer = $('#audio-player');
+                        audioPlayer.attr('src', '/audio/' + response.audio_file);
+                        audioPlayer.show();
+
+                        // 显示下载按钮
+                        $('#download-btn').show().on('click', function() {
+                            // 下载音频文件
+                            const link = document.createElement('a');
+                            link.href = '/audio/' + response.audio_file;
+                            link.download = response.audio_file;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        });
+
+                        // 显示音频区域
+                        $('#audio-container').show();
+                    },
+                    error: function(xhr, status, error) {
+                        // 隐藏加载动画
+                        $('#loading').hide();
+
+                        alert('生成语音失败，请稍后重试。');
+                        console.error(error);
+                    }
+                });
+            });
+        });
+    </script>
+
+    <!-- 加载动画的 CSS -->
+    <style>
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>
