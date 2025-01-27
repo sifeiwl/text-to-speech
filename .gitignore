@@ -1,5 +1,8 @@
+.idea
 audio
 build
 dist
 Dockerfile
 app.spec
+.DS_Store
+
